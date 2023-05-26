@@ -19,6 +19,7 @@ static inline int handle_passive_cb(
     struct bpf_sock_ops* skops,
     struct stats* stat,
     const struct server_info* s_info) {
+  TPR_PRINT(skops, "passive cb", skops->op);
   int err;
 
   switch (skops->op) {
@@ -34,10 +35,18 @@ static inline int handle_passive_cb(
     case BPF_SOCK_OPS_HDR_OPT_LEN_CB:
       /* Reserve space for writing the header option later in
        * BPF_SOCK_OPS_WRITE_HDR_OPT_CB. */
-      return handle_hdr_opt_len(skops, stat);
+      if ((skops->skb_tcp_flags & TCPHDR_SYNACK) == TCPHDR_SYNACK) {
+        return handle_hdr_opt_len(skops, stat);
+      } else {
+        return SUCCESS;
+      }
     case BPF_SOCK_OPS_WRITE_HDR_OPT_CB:
       /* Write the server-id as hdr-opt */
-      return handle_passive_write_hdr_opt(skops, stat, s_info);
+      if ((skops->skb_tcp_flags & TCPHDR_SYNACK) == TCPHDR_SYNACK) {
+        return handle_passive_write_hdr_opt(skops, stat, s_info);
+      } else {
+        return SUCCESS;
+      }
     case BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB:
       /* once the connection is estd, stop writing server-id */
       return handle_passive_estab(skops, stat, s_info);
@@ -52,6 +61,7 @@ static inline int handle_passive_cb(
 static inline int handle_active_cb(
     struct bpf_sock_ops* skops,
     struct stats* stat) {
+  TPR_PRINT(skops, "active cb", skops->op);
   switch (skops->op) {
     case BPF_SOCK_OPS_TCP_CONNECT_CB:
       /* Called before SYN is sent on active side: nth to do */
@@ -109,6 +119,6 @@ int tcp_pkt_router(struct bpf_sock_ops* skops) {
   return CG_OK;
 }
 
-// It requires GPL to run bpf_printk
+// bpf_printk requires GPL license
 char _license[] SEC("license") = "Facebook";
 int _version SEC("version") = 1;

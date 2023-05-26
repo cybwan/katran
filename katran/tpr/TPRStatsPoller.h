@@ -18,7 +18,10 @@ namespace katran_tpr {
  */
 class TPRStatsPoller : public folly::AsyncTimeout {
  public:
-  explicit TPRStatsPoller(folly::EventBase* evb, int statsMapFd);
+  explicit TPRStatsPoller(
+      RunningMode mode,
+      folly::EventBase* evb,
+      int statsMapFd);
 
   ~TPRStatsPoller() override;
 
@@ -49,6 +52,7 @@ class TPRStatsPoller : public folly::AsyncTimeout {
  protected:
   virtual void incrementCounter(const std::string& name);
   virtual void setCounter(const std::string& name, int64_t val);
+  virtual void setStatsCounters(const tcp_router_stats& stats);
 
  private:
   /**
@@ -56,6 +60,10 @@ class TPRStatsPoller : public folly::AsyncTimeout {
    */
   void updateStatsPeriodically();
 
+ protected:
+  RunningMode mode_;
+
+ private:
   /**
    * event base to run periodic tasks
    */
